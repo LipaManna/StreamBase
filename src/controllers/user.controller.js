@@ -46,26 +46,26 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar is required");
   }
 
- await User.create({
+  await User.create({
     fullname,
     avatar: avatar.url,
-    coverImage: coverImage?.url || '',
+    coverImage: coverImage?.url || "",
     email,
     password,
-    username: username.toLowerCase()
-  })
+    username: username.toLowerCase(),
+  });
 
   const createdUser = await User.findById(username._id).select(
-    '-password -refreshToken'
-  )
+    "-password -refreshToken"
+  );
 
-  if(!createdUser){
-    throw new ApiError(500, 'Something went wrong while registering user.')
+  if (!createdUser) {
+    throw new ApiError(500, "Something went wrong while registering user.");
   }
 
-  return res.status(201).json(
-    new ApiResponse(200, createdUser, 'User registered successfully.')
-  )
+  return res
+    .status(201)
+    .json(new ApiResponse(200, createdUser, "User registered successfully."));
 });
 
 export { registerUser };
