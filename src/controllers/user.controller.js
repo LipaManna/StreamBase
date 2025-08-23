@@ -15,16 +15,17 @@ const registerUser = asyncHandler(async (req, res) => {
   // check for user creation
   // return response
 
-  const { fullname, email, username, password } = req.body;
-  console.log("email", email);
+  // console.log(req.files);
+  const { fullName, email, username, password } = req.body;
+  // console.log("email", email);
 
   if (
-    [fullname, email, username, password].some((field) => field?.trim() === "")
+    [fullName, email, username, password].some((field) => field?.trim() === "")
   ) {
     throw new ApiError(400, "All fields are required");
   }
 
-  const existingUser = User.findOne({
+  const existingUser = await User.findOne({
     $or: [{ username }, { email }],
   });
 
@@ -32,11 +33,22 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User already exists");
   }
 
-  const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  const avatarLocalPath = req.files?.avatar?.[0]?.path;
+  let coverImageLocalPath;
+  if (
+    req?.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files.coverImage[0].path;
+  }
 
   if (!avatarLocalPath) {
-    throw new ApiError(400, "Avatar is required");
+    console.error("Avatar file missing. req.files:", req.files);
+    throw new ApiError(
+      400,
+      "Avatar file is missing in the request. Please upload a file with the key 'avatar'."
+    );
   }
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
@@ -46,8 +58,8 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar is required");
   }
 
-  await User.create({
-    fullname,
+  const user = await User.create({
+    fullName,
     avatar: avatar.url,
     coverImage: coverImage?.url || "",
     email,
@@ -55,9 +67,14 @@ const registerUser = asyncHandler(async (req, res) => {
     username: username.toLowerCase(),
   });
 
-  const createdUser = await User.findById(username._id).select(
-    "-password -refreshToken"
-  );
+  let createdUser;
+  try {
+    createdUser = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
+  } catch (error) {
+    console.log(error);
+  }
 
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering user.");
